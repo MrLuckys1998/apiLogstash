@@ -1,0 +1,58 @@
+"""
+Watcher: multi_field_values
+Descripción: Genera una alerta si múltiples campos tienen valores específicos en los documentos de un índice.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- fields: Lista de campos y valores esperados
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+import json
+
+# Watcher: multi_field_values
+
+{% set elastic_user = elastic_user | default('') %}
+{% set elastic_pass = elastic_pass | default('') %}
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}), verify_certs=False)
+{% else %}
+es = Elasticsearch("{{ elastic_url }}", verify_certs=False)
+{% endif %}
+
+def run():
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+
+    now = datetime.utcnow()
+    since = now - timedelta(minutes=30)
+
+    try:
+        conditions_data = json.loads('''{{ conditions | default([]) | tojson | replace("'", "\'") }}''')
+        conditions = [ { "term": { c["field"]: c["value"] } } for c in conditions_data ]
+    except Exception as parse_err:
+        logger.error(f"Error procesando condiciones: {parse_err}")
+        return
+
+    query = {
+        "bool": {
+            "must": [
+                { "range": { "{{ timestamp_field }}" : { "gte": since.isoformat(), "lt": now.isoformat() } }},
+                { "bool": { "should": conditions }}
+            ]
+        }
+    }
+
+    try:
+        result = es.count(index="{{ index }}", body={ "query": query })
+        count = result.get('count', 0)
+
+        if count > 0:
+            logger.info(f"ALERTA: Detectadas {count} ocurrencias de condiciones definidas.")
+            # Webhooks
+
+    except Exception as e:
+        logger.error(f"Error durante la ejecución del watcher: {e}")

@@ -1,0 +1,13 @@
+[Unit]
+Description=Watcher Orchestrator Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/ruta/a/mi_watcher_project
+ExecStart=/usr/bin/python3 watcher_orchestrator.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

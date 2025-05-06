@@ -1,0 +1,52 @@
+"""
+Watcher: min_threshold
+Descripción: Genera una alerta si el valor mínimo de un campo específico es inferior a un umbral definido.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- field: Campo sobre el que se calculará el valor mínimo
+- threshold: Umbral que activará la alerta
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+
+# Watcher: min_threshold
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}))
+{% else %}
+es = Elasticsearch("{{ elastic_url }}")
+{% endif %}
+
+
+def run():
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+    
+    now = datetime.utcnow()
+    since = now - timedelta(minutes=30)
+
+    result = es.search(index="{{ index }}", size=0, body={
+        "query": {
+            "range": {
+                "{{ timestamp_field }}": {
+                    "gte": since.isoformat(),
+                    "lt": now.isoformat()
+                }
+            }
+        },
+        "aggs": {
+            "min_value": {
+                "min": {
+                    "field": "{{ target_field }}"
+                }
+            }
+        }
+    })
+
+    value = result['aggregations']['min_value']['value']
+    if value < {{ threshold }}:
+        logger.info(f"ALERTA: MIN({{ target_field }}) = {{ value }} < {{ threshold }}")
+        # Webhooks

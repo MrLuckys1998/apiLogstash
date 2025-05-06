@@ -1,0 +1,6 @@
+{
+  "index": "watcher-pruebas",
+  "timestamp_field": "@timestamp",
+  "terms_field": "service",
+  "expected_terms": ["servicioA", "servicioB", "servicioC"]
+}

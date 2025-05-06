@@ -1,0 +1,44 @@
+"""
+Watcher: custom_query
+Descripción: Ejecuta una consulta personalizada definida completamente por el usuario.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- query: Objeto completo de la query
+- condition_script: (opcional) Código Python que evalúa si se dispara la alerta
+- elastic_url, elastic_user, elastic_pass
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime
+from logger import logger
+
+# Conexión a Elasticsearch
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}), verify_certs=False)
+{% else %}
+es = Elasticsearch("{{ elastic_url }}", verify_certs=False)
+{% endif %}
+
+def run():
+    try:
+        elastic_url = "{{ elastic_url }}"
+        elastic_user = "{{ elastic_user }}"
+        elastic_pass = "{{ elastic_pass }}"
+
+        # Ejecutar búsqueda usando una query personalizada
+        result = es.search(index="{{ index }}", body={{ query | default('{}') | tojson }})
+        logger.info("Consulta ejecutada")
+
+        {% if condition_script %}
+        # Evaluar la condición definida por el usuario
+        try:
+{% for line in condition_script.splitlines() %}
+            {{ line }}
+              # Webhooks
+{% endfor %}
+        except Exception as ce:
+            logger.error(f"Error evaluando condición: {ce}")
+        {% endif %}
+
+    except Exception as e:
+        logger.error(f"Error durante la ejecución del watcher: {e}")

@@ -1,0 +1,12 @@
+{
+  "index": "watcher-pruebas*",
+  "query": {
+    "query": {
+      "range": {
+        "@timestamp": {
+          "gte": "now-30m"
+        }
+      }
+    }
+  }
+}

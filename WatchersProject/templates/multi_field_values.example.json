@@ -1,0 +1,14 @@
+{
+  "index": "watcher-pruebas",
+  "timestamp_field": "@timestamp",
+  "conditions": [
+    {
+      "field": "status",
+      "value": 500
+    },
+    {
+      "field": "error",
+      "value": "Timeout"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+"""
+Watcher: missing_data
+Descripción: Genera una alerta si no se encuentran datos en un índice durante un período de tiempo específico.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- time_range: Rango de tiempo para verificar datos (ejemplo: "now-1h")
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+
+# Watcher: missing_data
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}))
+{% else %}
+es = Elasticsearch("{{ elastic_url }}")
+{% endif %}
+
+
+def run():
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+
+    now = datetime.utcnow()
+    since = now - timedelta(hours=1)
+
+    result = es.count(index="{{ index }}", body={
+        "query": {
+            "range": {
+                "{{ timestamp_field }}": {
+                    "gte": since.isoformat(),
+                    "lt": now.isoformat()
+                }
+            }
+        }
+    })
+
+    if result['count'] == 0:
+        logger.info("ALERTA: No hay datos en la última hora.")
+        # Webhooks

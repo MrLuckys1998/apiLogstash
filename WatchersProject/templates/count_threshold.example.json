@@ -1,0 +1,5 @@
+{
+  "index": "watcher-pruebas",
+  "timestamp_field": "@timestamp",
+  "threshold": 1000
+}

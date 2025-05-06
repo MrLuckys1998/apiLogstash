@@ -1,0 +1,43 @@
+"""
+Watcher: count_threshold
+Descripción: Genera una alerta si el número de documentos que cumplen una condición supera un umbral definido.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- query: Query para filtrar documentos
+- threshold: Umbral que activará la alerta
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}))
+{% else %}
+es = Elasticsearch("{{ elastic_url }}")
+{% endif %}
+
+def run():
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+    
+    now = datetime.utcnow()
+    since = now - timedelta(minutes=40)
+
+    result = es.count(index="{{ index }}", body={
+        "query": {
+            "range": {
+                "{{ timestamp_field }}": {
+                    "gte": since.isoformat(),
+                    "lt": now.isoformat()
+                }
+            }
+        }
+    })
+
+    count = result['count']
+    if count > {{ threshold }}:
+        message = f"ALERTA: Número de documentos = {{ count }} > {{ threshold }}"
+        logger.info(message)
+        # Webhooks

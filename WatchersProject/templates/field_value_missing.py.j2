@@ -1,0 +1,43 @@
+"""
+Watcher: field_value_missing
+Descripción: Genera una alerta si un campo esperado no está presente en los documentos de un índice.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- field: Campo que se espera encontrar
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+
+# Watcher: field_value_missing
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}))
+{% else %}
+es = Elasticsearch("{{ elastic_url }}")
+{% endif %}
+
+
+def run():
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+
+    now = datetime.utcnow()
+    since = now - timedelta(hours=1)
+
+    query = {
+        "bool": {
+            "must": [
+                { "range": { "{{ timestamp_field }}": { "gte": since.isoformat(), "lt": now.isoformat() } }},
+                { "term": { "{{ field }}": "{{ value }}" }}
+            ]
+        }
+    }
+
+    result = es.count(index="{{ index }}", body={ "query": query })
+
+    if result['count'] == 0:
+        logger.info("ALERTA: No se ha encontrado '{{ value }}' en el campo '{{ field }}'.")
+        # Webhooks

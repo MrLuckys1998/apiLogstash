@@ -1,0 +1,12 @@
+[Unit]
+Description=Watcher Orchestrator
+After=network.target
+
+[Service]
+WorkingDirectory=/tmp/WatchersProject/
+ExecStart=/usr/bin/python3 watcher_orchestrator.py
+Restart=always
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

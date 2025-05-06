@@ -1,0 +1,60 @@
+"""
+Watcher: unique_terms_missing
+Descripción: Genera una alerta si un término único esperado no está presente en los documentos de un índice.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- field: Campo que contiene los términos únicos
+- expected_terms: Lista de términos esperados
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+import json
+
+# Watcher: unique_terms_missing
+# Descripción: Agrupa por un campo (ej: service.keyword) y alerta si alguno de los valores esperados no aparece.
+
+{% set elastic_user = elastic_user | default('') %}
+{% set elastic_pass = elastic_pass | default('') %}
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}))
+{% else %}
+es = Elasticsearch("{{ elastic_url }}")
+{% endif %}
+
+def run():
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+    
+    now = datetime.utcnow()
+    since = now - timedelta(hours=1)
+
+    result = es.search(index="{{ index }}", size=0, body={
+        "query": {
+            "range": {
+                "{{ timestamp_field }}": {
+                    "gte": since.isoformat(),
+                    "lt": now.isoformat()
+                }
+            }
+        },
+        "aggs": {
+            "unique_terms": {
+                "terms": {
+                    "field": "{{ terms_field }}.keyword",
+                    "size": 100
+                }
+            }
+        }
+    })
+
+    terms = [bucket['key'] for bucket in result['aggregations']['unique_terms']['buckets']]
+    expected_terms_data = json.loads('''{{ expected_terms | default([]) | tojson | replace("'", "\'") }}''')
+    missing = [term for term in expected_terms_data if term not in terms]
+
+    if missing:
+      logger.info(f"ALERTA: No se han detectado los términos esperados: {missing}")
+      # Webhooks

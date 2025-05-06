@@ -1,0 +1,7 @@
+{
+  "index": "watcher-pruebas",
+  "timestamp_field": "@timestamp",
+  "numerator_field": "errors",
+  "denominator_field": "requests",
+  "threshold": 0.1
+}

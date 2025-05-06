@@ -1,0 +1,45 @@
+"""
+Watcher: ratio_between_fields
+Descripción: Genera una alerta si la relación entre dos campos supera un umbral definido.
+Parámetros esperados:
+- index: Índice de Elasticsearch
+- numerator_field: Campo numerador
+- denominator_field: Campo denominador
+- threshold: Umbral que activará la alerta
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
+from logger import logger
+
+# Watcher: ratio_between_fields
+
+{% if elastic_user and elastic_pass %}
+es = Elasticsearch("{{ elastic_url }}", basic_auth=({{ elastic_user | tojson }}, {{ elastic_pass | tojson }}))
+{% else %}
+es = Elasticsearch("{{ elastic_url }}")
+{% endif %}
+
+
+def run():
+
+    elastic_url = "{{ elastic_url }}"
+    elastic_user = "{{ elastic_user }}"
+    elastic_pass = "{{ elastic_pass }}"
+    
+    now = datetime.utcnow()
+    since = now - timedelta(minutes=15)
+
+    result = es.search(index="{{ index }}", size=0, body={
+        "query": { "range": { "{{ timestamp_field }}": { "gte": since.isoformat(), "lt": now.isoformat() } }},
+        "aggs": {
+            "num": { "sum": { "field": "{{ numerator_field }}" }},
+            "den": { "sum": { "field": "{{ denominator_field }}" }}
+        }
+    })
+
+    num = result['aggregations']['num']['value']
+    den = result['aggregations']['den']['value']
+    if den and (num / den) > {{ threshold }}:
+        logger.info(f"ALERTA: Ratio {num}/{den} = {num/den} > {{ threshold }}")
+        # Webhooks
